@@ -1,0 +1,15 @@
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,system-ui,sans-serif;background:#f1f5f9;color:#0f172a;padding-bottom:env(safe-area-inset-bottom)}
+header{display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;background:#1e40af;color:#fff}h1{font-size:20px;margin:0}
+main{padding:12px;max-width:640px;margin:auto}section{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px}
+#rec{text-align:center}#timer{font-size:44px;font-variant-numeric:tabular-nums;margin:6px}
+.big{width:150px;height:150px;border-radius:50%;background:#dc2626;color:#fff;font-size:44px;border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:10px auto}.big span{font-size:16px}.big.recording{animation:p 1.2s infinite}@keyframes p{50%{opacity:.6}}
+button,select,input,textarea{font-size:16px;padding:10px;border-radius:10px;border:1px solid #cbd5e1;background:#fff}button{background:#1e40af;color:#fff;border:0}button:disabled{opacity:.4}
+.ghost{background:transparent;color:inherit;border:1px solid currentColor}.danger{background:#dc2626}
+.row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:8px 0}.warn{color:#b45309;font-size:14px}.small{font-size:13px;color:#475569}
+.file{padding:10px;border:1px dashed #1e40af;border-radius:10px;color:#1e40af}.file input{display:none}
+#search{width:100%}ul{list-style:none;padding:0}li{padding:12px;border-bottom:1px solid #e2e8f0}li b{display:block}li small{color:#64748b}
+dialog{width:100%;max-width:640px;height:100%;max-height:100%;margin:0 auto;border:0;padding:0}.dlg{padding:calc(env(safe-area-inset-top) + 12px) 14px 30px}
+.dlg label{display:block;margin:10px 0}.dlg label input,.dlg label select{width:100%;margin-top:4px}#dTitle{flex:1}audio{width:100%}
+.tabs{display:flex;gap:6px;margin:10px 0}.tabs button{flex:1;background:#e2e8f0;color:#0f172a}.tabs .on{background:#1e40af;color:#fff}
+.tab{white-space:pre-wrap;line-height:1.55;min-height:120px}.hidden{display:none}textarea{width:100%;min-height:70px}
+.mark{display:inline-block;background:#fef3c7;border-radius:6px;padding:2px 6px;margin:2px;font-size:13px}

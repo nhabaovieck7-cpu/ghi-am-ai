@@ -1,0 +1,33 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Ghi Âm AI">
+<meta name="theme-color" content="#1e40af"><link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png"><title>Ghi Âm AI</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><h1>Ghi Âm AI</h1><button id="btnSettings" class="ghost">⚙️ Cài đặt</button></header>
+<main>
+<section id="rec">
+ <div id="timer">00:00</div>
+ <button id="btnRec" class="big">●<span>Ghi âm</span></button>
+ <div class="row"><button id="btnPause" disabled>⏸ Tạm dừng</button><button id="btnMark" disabled>🚩 Đánh dấu</button><button id="btnStop" disabled>⏹ Dừng</button></div>
+ <p class="warn">⚠️ Giữ màn hình bật và không chuyển app khi đang ghi âm.</p>
+ <div class="row"><select id="tpl"><option value="meeting">Cuộc họp</option><option value="kaigo">Kaigo – 申し送り</option><option value="interview">Phỏng vấn</option><option value="lecture">Bài giảng</option></select>
+ <label class="file">📂 Nhập file âm thanh<input type="file" id="fileIn" accept="audio/*,video/mp4,.m4a,.mp3,.wav"></label></div>
+</section>
+<section><input id="search" placeholder="🔍 Tìm bản ghi..."><ul id="list"></ul></section>
+</main>
+<dialog id="detail"><div class="dlg">
+ <div class="row"><input id="dTitle"><button id="dClose" class="ghost">✕</button></div>
+ <audio id="dAudio" controls></audio><div id="dMarks"></div><p id="dStatus"></p>
+ <div class="tabs"><button data-t="summary" class="on">Tóm tắt</button><button data-t="transcript">Văn bản</button><button data-t="ask">Hỏi AI</button></div>
+ <div id="tab-summary" class="tab"></div><div id="tab-transcript" class="tab hidden"></div>
+ <div id="tab-ask" class="tab hidden"><textarea id="q" placeholder="Hỏi về bản ghi này..."></textarea><button id="btnAsk">Hỏi</button><div id="answers"></div></div>
+ <div class="row"><button id="dRedo">🔄 Xử lý lại</button><button id="dCopy">📋 Sao chép</button><button id="dShare">📤 Chia sẻ</button><button id="dExport">💾 Xuất .txt</button><button id="dDel" class="danger">🗑 Xoá</button></div>
+</div></dialog>
+<dialog id="settings"><div class="dlg"><h2>Cài đặt</h2>
+ <label>Khoá API Gemini<input id="sKey" type="password" placeholder="AIza..."></label>
+ <p class="small">Lấy miễn phí tại <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com/app/apikey</a>. Khoá chỉ lưu trên máy này.</p>
+ <label>Ngôn ngữ tóm tắt<select id="sLang"><option value="vi">Tiếng Việt</option><option value="ja">Tiếng Nhật</option><option value="both">Cả hai</option></select></label>
+ <label>Mô hình<input id="sModel"></label>
+ <div class="row"><button id="sSave">Lưu</button><button id="sClose" class="ghost">Đóng</button></div></div></dialog>
+<script src="app.js"></script></body></html>
