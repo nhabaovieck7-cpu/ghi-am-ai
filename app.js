@@ -1,7 +1,7 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const API='https://generativelanguage.googleapis.com';
-const S={get key(){return localStorage.key_gemini||''},get lang(){return localStorage.lang||'vi'},get model(){const m=localStorage.model;return(!m||m==='gemini-2.5-flash')?'gemini-3.8-flash':m}};
+const S={get key(){return localStorage.key_gemini||''},get lang(){return localStorage.lang||'vi'},get model(){const m=localStorage.model;if(!m||/^gemini-[12]\./.test(m)){localStorage.model='gemini-3.8-flash';return'gemini-3.8-flash'}return m},get tr(){return localStorage.liveTr!=='0'}};
 // ---------- IndexedDB ----------
 let dbp=new Promise((res,rej)=>{const r=indexedDB.open('ghiamai',1);r.onupgradeneeded=()=>r.result.createObjectStore('rec',{keyPath:'id'});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
 async function tx(mode,fn){const db=await dbp;return new Promise((res,rej)=>{const t=db.transaction('rec',mode),s=t.objectStore('rec'),r=fn(s);t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})}
@@ -15,15 +15,24 @@ async function lockWake(){try{if('wakeLock'in navigator)wake=await navigator.wak
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&mr&&mr.state!=='inactive')lockWake()});
 // ---------- Live text ----------
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let sr,srOn=false,liveFin=[],liveInt='';
-function liveShow(){const el=$('live');el.innerHTML=liveFin.map(x=>'<span class="t">['+x.t+']</span> '+x.s.replace(/</g,'&lt;')).join('\n')+(liveInt?'\n<span class="i">'+liveInt.replace(/</g,'&lt;')+'</span>':'');el.scrollTop=el.scrollHeight}
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+function liveShow(){const el=$('live');el.innerHTML=liveFin.map(x=>'<span class="t">['+x.t+']</span> '+esc(x.s)+(x.vi?'\n<span class="vi">'+esc(x.vi)+'</span>':'')).join('\n')+(liveInt?'\n<span class="i">'+liveInt.replace(/</g,'&lt;')+'</span>':'');el.scrollTop=el.scrollHeight}
 function liveNote(t){$('liveNote').textContent=t;$('liveNote').classList.toggle('hidden',!t)}
 function liveStart(){if(!SR)return;srOn=true;try{sr=new SR();sr.lang=localStorage.srLang||'ja-JP';sr.continuous=true;sr.interimResults=true;
- sr.onresult=e=>{liveInt='';for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i],x=r[0].transcript.trim();if(r.isFinal){if(x)liveFin.push({t:fmt(elapsed()),s:x})}else liveInt+=x}liveShow()};
+ sr.onresult=e=>{liveInt='';for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i],x=r[0].transcript.trim();if(r.isFinal){if(x){const o={t:fmt(elapsed()),s:x};liveFin.push(o);trQueue(o)}}else liveInt+=x}liveShow()};
  sr.onerror=e=>{if(['not-allowed','service-not-allowed','audio-capture'].includes(e.error)){srOn=false;liveNote('ℹ️ Không hiện được chữ trực tiếp trên máy này, nhưng ghi âm vẫn chạy bình thường.')}};
- sr.onend=()=>{if(liveInt){liveFin.push({t:fmt(elapsed()),s:liveInt});liveInt='';liveShow()}if(srOn&&mr&&mr.state==='recording')setTimeout(()=>{if(srOn&&mr&&mr.state==='recording')try{sr.start()}catch(e){}},250)};
+ sr.onend=()=>{if(liveInt){const o={t:fmt(elapsed()),s:liveInt};liveFin.push(o);trQueue(o);liveInt='';liveShow()}if(srOn&&mr&&mr.state==='recording')setTimeout(()=>{if(srOn&&mr&&mr.state==='recording')try{sr.start()}catch(e){}},250)};
  sr.start()}catch(e){srOn=false;liveNote('ℹ️ Không hiện được chữ trực tiếp, nhưng ghi âm vẫn chạy bình thường.')}}
 function liveStop(){srOn=false;if(sr)try{sr.stop()}catch(e){}}
-const liveText=()=>liveFin.map(x=>'['+x.t+'] '+x.s).join('\n')+(liveInt?'\n'+liveInt:'');
+let trPend=[],trBusy=false,trTimer=null,trWarned=false;
+function trQueue(o){const l=(sr&&sr.lang)||localStorage.srLang||'ja-JP';if(!S.tr||!S.key||!/^(ja-JP|en-US)$/.test(l))return;trPend.push(o);if(!trTimer)trTimer=setTimeout(trRun,4000)}
+async function trRun(){trTimer=null;if(trBusy){trTimer=setTimeout(trRun,1000);return}if(!trPend.length)return;const b=trPend.splice(0);trBusy=true;
+ try{const src=b.map((x,i)=>(i+1)+'. '+x.s).join('\n');const out=await gen([{text:'Dịch sang tiếng Việt tự nhiên, chỉ trả bản dịch. Giữ nguyên đánh số từng dòng, mỗi dòng một câu.\n\n'+src}]);
+  const ls=out.trim().split(/\n+/).map(s=>s.replace(/^\s*\d+[.)、:]\s*/,'').trim()).filter(Boolean);
+  if(ls.length===b.length)b.forEach((x,i)=>x.vi=ls[i]);else b[b.length-1].vi=ls.join(' ');liveShow()}
+ catch(e){if(!trWarned){trWarned=true;liveNote('ℹ️ Không dịch được tiếng Việt lúc này, chữ trực tiếp vẫn chạy.')}}
+ finally{trBusy=false;if(trPend.length&&!trTimer)trTimer=setTimeout(trRun,4000)}}
+const liveText=()=>liveFin.map(x=>'['+x.t+'] '+x.s+(x.vi?'\n    → '+x.vi:'')).join('\n')+(liveInt?'\n'+liveInt:'');
 if(!SR)liveNote('ℹ️ Trình duyệt này không hỗ trợ hiện chữ trực tiếp.');
 $('btnRec').onclick=async()=>{
  if(mr&&mr.state!=='inactive')return;
@@ -31,7 +40,7 @@ $('btnRec').onclick=async()=>{
  const mime=pickMime();mr=new MediaRecorder(stream,mime?{mimeType:mime}:{});chunks=[];marks=[];acc=0;
  mr.ondataavailable=e=>e.data.size&&chunks.push(e.data);mr.onstop=finish;mr.start(1000);t0=Date.now();
  tick=setInterval(()=>$('timer').textContent=fmt(elapsed()),500);lockWake();
- $('btnRec').classList.add('recording');liveFin=[];liveInt='';if(SR){$('live').classList.remove('hidden');liveShow();liveNote('');liveStart();setTimeout(()=>{if(mr&&mr.state==='inactive'){liveStop();liveNote('ℹ️ Chữ trực tiếp xung đột với micro nên đã tắt.')}},1500)}['btnPause','btnMark','btnStop'].forEach(b=>$(b).disabled=false)};
+ $('btnRec').classList.add('recording');liveFin=[];liveInt='';trPend=[];trWarned=false;if(SR){$('live').classList.remove('hidden');liveShow();liveNote('');liveStart();setTimeout(()=>{if(mr&&mr.state==='inactive'){liveStop();liveNote('ℹ️ Chữ trực tiếp xung đột với micro nên đã tắt.')}},1500)}['btnPause','btnMark','btnStop'].forEach(b=>$(b).disabled=false)};
 $('btnPause').onclick=()=>{if(mr.state==='recording'){acc+=(Date.now()-t0)/1000;mr.pause();liveStop();$('btnPause').textContent='▶️ Tiếp tục'}else{t0=Date.now();mr.resume();liveStart();$('btnPause').textContent='⏸ Tạm dừng'}};
 $('btnMark').onclick=()=>{marks.push(Math.floor(elapsed()));$('btnMark').textContent='🚩 Đánh dấu ('+marks.length+')'};
 $('btnStop').onclick=()=>{acc=elapsed();liveStop();mr.stop();stream.getTracks().forEach(t=>t.stop());clearInterval(tick);if(wake)wake.release().catch(()=>{});wake=null;
@@ -109,9 +118,11 @@ $('btnAsk').onclick=async()=>{const q=$('q').value.trim();if(!q)return;const r=a
  try{const a=await gen([{text:'Dựa vào bản ghi sau, trả lời câu hỏi bằng tiếng Việt (trừ khi được hỏi bằng ngôn ngữ khác). Nếu bản ghi không có thông tin thì nói rõ.\n\nBẢN GHI:\n'+r.transcript+'\n\nTÓM TẮT:\n'+r.summary+'\n\nCÂU HỎI: '+q}]);
   r.qa=(r.qa||[]).concat({q,a});await dbPut(r);addQA(q,a);$('q').value=''}catch(e){alert('Lỗi: '+e.message)}$('btnAsk').disabled=false};
 // settings
-$('btnSettings').onclick=()=>{$('sKey').value=S.key;$('sLang').value=S.lang;$('sModel').value=S.model;$('sSr').value=localStorage.srLang||'ja-JP';$('settings').showModal()};
-$('sSave').onclick=()=>{localStorage.key_gemini=$('sKey').value.trim();localStorage.lang=$('sLang').value;localStorage.srLang=$('sSr').value;localStorage.model=$('sModel').value.trim()||'gemini-3.8-flash';$('settings').close()};
+$('btnSettings').onclick=()=>{$('sKey').value=S.key;$('sLang').value=S.lang;$('sModel').value=S.model;$('sSr').value=localStorage.srLang||'ja-JP';$('sTr').checked=S.tr;$('settings').showModal()};
+$('sSave').onclick=()=>{localStorage.key_gemini=$('sKey').value.trim();localStorage.lang=$('sLang').value;localStorage.srLang=$('sSr').value;localStorage.liveTr=$('sTr').checked?'1':'0';localStorage.model=$('sModel').value.trim()||'gemini-3.8-flash';$('settings').close()};
 $('sClose').onclick=()=>$('settings').close();
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
-if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+if('serviceWorker'in navigator){const had=!!navigator.serviceWorker.controller;let rl=false;
+ navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!rl){rl=true;location.reload()}});
+ navigator.serviceWorker.register('sw.js?v=4',{updateViaCache:'none'}).then(reg=>{reg.update().catch(()=>{});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{})})}).catch(()=>{})}
 render();if(!S.key)setTimeout(()=>$('btnSettings').onclick(),300);

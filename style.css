@@ -14,3 +14,5 @@ dialog{width:100%;max-width:640px;height:100%;max-height:100%;margin:0 auto;bord
 .tab{white-space:pre-wrap;line-height:1.55;min-height:120px}.hidden{display:none}textarea{width:100%;min-height:70px}
 .mark{display:inline-block;background:#fef3c7;border-radius:6px;padding:2px 6px;margin:2px;font-size:13px}
 .live{max-height:180px;overflow-y:auto;text-align:left;background:#f1f5f9;border-radius:10px;padding:8px;margin:8px 0;font-size:15px;white-space:pre-wrap}.live .i{color:#94a3b8}.live .t{color:#64748b;font-size:12px}
+
+.live .vi{color:#2563eb;font-size:13px}

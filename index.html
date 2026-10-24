@@ -2,9 +2,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Ghi Âm AI">
 <meta name="theme-color" content="#1e40af"><link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-192.png"><title>Ghi Âm AI</title><link rel="stylesheet" href="style.css"></head>
+<link rel="apple-touch-icon" href="icon-192.png"><title>Ghi Âm AI</title><link rel="stylesheet" href="style.css?v=4"></head>
 <body>
-<header><h1>Ghi Âm AI</h1><button id="btnSettings" class="ghost">⚙️ Cài đặt</button></header>
+<header><h1>Ghi Âm AI <small style="font-size:12px;opacity:.7">v4</small></h1><button id="btnSettings" class="ghost">⚙️ Cài đặt</button></header>
 <main>
 <section id="rec">
  <div id="timer">00:00</div>
@@ -25,11 +25,12 @@
  <div id="tab-ask" class="tab hidden"><textarea id="q" placeholder="Hỏi về bản ghi này..."></textarea><button id="btnAsk">Hỏi</button><div id="answers"></div></div>
  <div class="row"><button id="dRedo">🔄 Xử lý lại</button><button id="dCopy">📋 Sao chép</button><button id="dShare">📤 Chia sẻ</button><button id="dExport">💾 Xuất .txt</button><button id="dDel" class="danger">🗑 Xoá</button></div>
 </div></dialog>
-<dialog id="settings"><div class="dlg"><h2>Cài đặt</h2>
+<dialog id="settings"><div class="dlg"><h2>Cài đặt <small style="font-size:12px;opacity:.7">phiên bản v4</small></h2>
  <label>Khoá API Gemini<input id="sKey" type="password" placeholder="AIza..."></label>
  <p class="small">Lấy miễn phí tại <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com/app/apikey</a>. Khoá chỉ lưu trên máy này.</p>
  <label>Ngôn ngữ tóm tắt<select id="sLang"><option value="vi">Tiếng Việt</option><option value="ja">Tiếng Nhật</option><option value="both">Cả hai</option></select></label>
  <label>Ngôn ngữ chữ trực tiếp<select id="sSr"><option value="ja-JP">Tiếng Nhật</option><option value="vi-VN">Tiếng Việt</option><option value="en-US">Tiếng Anh</option></select></label>
+ <label><input type="checkbox" id="sTr" style="width:auto"> Dịch tiếng Việt khi ghi âm</label>
  <label>Mô hình<input id="sModel"></label>
  <div class="row"><button id="sSave">Lưu</button><button id="sClose" class="ghost">Đóng</button></div></div></dialog>
-<script src="app.js"></script></body></html>
+<script src="app.js?v=4"></script></body></html>
