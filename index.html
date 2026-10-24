@@ -10,6 +10,7 @@
  <div id="timer">00:00</div>
  <button id="btnRec" class="big">●<span>Ghi âm</span></button>
  <div class="row"><button id="btnPause" disabled>⏸ Tạm dừng</button><button id="btnMark" disabled>🚩 Đánh dấu</button><button id="btnStop" disabled>⏹ Dừng</button></div>
+ <div id="live" class="live hidden"></div><p id="liveNote" class="small hidden"></p>
  <p class="warn">⚠️ Giữ màn hình bật và không chuyển app khi đang ghi âm.</p>
  <div class="row"><select id="tpl"><option value="meeting">Cuộc họp</option><option value="kaigo">Kaigo – 申し送り</option><option value="interview">Phỏng vấn</option><option value="lecture">Bài giảng</option></select>
  <label class="file">📂 Nhập file âm thanh<input type="file" id="fileIn" accept="audio/*,video/mp4,.m4a,.mp3,.wav"></label></div>
@@ -19,8 +20,8 @@
 <dialog id="detail"><div class="dlg">
  <div class="row"><input id="dTitle"><button id="dClose" class="ghost">✕</button></div>
  <audio id="dAudio" controls></audio><div id="dMarks"></div><p id="dStatus"></p>
- <div class="tabs"><button data-t="summary" class="on">Tóm tắt</button><button data-t="transcript">Văn bản</button><button data-t="ask">Hỏi AI</button></div>
- <div id="tab-summary" class="tab"></div><div id="tab-transcript" class="tab hidden"></div>
+ <div class="tabs"><button data-t="summary" class="on">Tóm tắt</button><button data-t="transcript">Văn bản</button><button data-t="live">Chữ trực tiếp</button><button data-t="ask">Hỏi AI</button></div>
+ <div id="tab-summary" class="tab"></div><div id="tab-transcript" class="tab hidden"></div><div id="tab-live" class="tab hidden"></div>
  <div id="tab-ask" class="tab hidden"><textarea id="q" placeholder="Hỏi về bản ghi này..."></textarea><button id="btnAsk">Hỏi</button><div id="answers"></div></div>
  <div class="row"><button id="dRedo">🔄 Xử lý lại</button><button id="dCopy">📋 Sao chép</button><button id="dShare">📤 Chia sẻ</button><button id="dExport">💾 Xuất .txt</button><button id="dDel" class="danger">🗑 Xoá</button></div>
 </div></dialog>
@@ -28,6 +29,7 @@
  <label>Khoá API Gemini<input id="sKey" type="password" placeholder="AIza..."></label>
  <p class="small">Lấy miễn phí tại <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com/app/apikey</a>. Khoá chỉ lưu trên máy này.</p>
  <label>Ngôn ngữ tóm tắt<select id="sLang"><option value="vi">Tiếng Việt</option><option value="ja">Tiếng Nhật</option><option value="both">Cả hai</option></select></label>
+ <label>Ngôn ngữ chữ trực tiếp<select id="sSr"><option value="ja-JP">Tiếng Nhật</option><option value="vi-VN">Tiếng Việt</option><option value="en-US">Tiếng Anh</option></select></label>
  <label>Mô hình<input id="sModel"></label>
  <div class="row"><button id="sSave">Lưu</button><button id="sClose" class="ghost">Đóng</button></div></div></dialog>
 <script src="app.js"></script></body></html>

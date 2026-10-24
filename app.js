@@ -13,21 +13,33 @@ const elapsed=()=>acc+(mr&&mr.state==='recording'?(Date.now()-t0)/1000:0);
 function pickMime(){for(const m of['audio/mp4','audio/webm;codecs=opus','audio/webm','audio/ogg'])if(window.MediaRecorder&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))return m;return''}
 async function lockWake(){try{if('wakeLock'in navigator)wake=await navigator.wakeLock.request('screen')}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&mr&&mr.state!=='inactive')lockWake()});
+// ---------- Live text ----------
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let sr,srOn=false,liveFin=[],liveInt='';
+function liveShow(){const el=$('live');el.innerHTML=liveFin.map(x=>'<span class="t">['+x.t+']</span> '+x.s.replace(/</g,'&lt;')).join('\n')+(liveInt?'\n<span class="i">'+liveInt.replace(/</g,'&lt;')+'</span>':'');el.scrollTop=el.scrollHeight}
+function liveNote(t){$('liveNote').textContent=t;$('liveNote').classList.toggle('hidden',!t)}
+function liveStart(){if(!SR)return;srOn=true;try{sr=new SR();sr.lang=localStorage.srLang||'ja-JP';sr.continuous=true;sr.interimResults=true;
+ sr.onresult=e=>{liveInt='';for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i],x=r[0].transcript.trim();if(r.isFinal){if(x)liveFin.push({t:fmt(elapsed()),s:x})}else liveInt+=x}liveShow()};
+ sr.onerror=e=>{if(['not-allowed','service-not-allowed','audio-capture'].includes(e.error)){srOn=false;liveNote('ℹ️ Không hiện được chữ trực tiếp trên máy này, nhưng ghi âm vẫn chạy bình thường.')}};
+ sr.onend=()=>{if(liveInt){liveFin.push({t:fmt(elapsed()),s:liveInt});liveInt='';liveShow()}if(srOn&&mr&&mr.state==='recording')setTimeout(()=>{if(srOn&&mr&&mr.state==='recording')try{sr.start()}catch(e){}},250)};
+ sr.start()}catch(e){srOn=false;liveNote('ℹ️ Không hiện được chữ trực tiếp, nhưng ghi âm vẫn chạy bình thường.')}}
+function liveStop(){srOn=false;if(sr)try{sr.stop()}catch(e){}}
+const liveText=()=>liveFin.map(x=>'['+x.t+'] '+x.s).join('\n')+(liveInt?'\n'+liveInt:'');
+if(!SR)liveNote('ℹ️ Trình duyệt này không hỗ trợ hiện chữ trực tiếp.');
 $('btnRec').onclick=async()=>{
  if(mr&&mr.state!=='inactive')return;
  try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}catch(e){return alert('Không truy cập được micro: '+e.message)}
  const mime=pickMime();mr=new MediaRecorder(stream,mime?{mimeType:mime}:{});chunks=[];marks=[];acc=0;
  mr.ondataavailable=e=>e.data.size&&chunks.push(e.data);mr.onstop=finish;mr.start(1000);t0=Date.now();
  tick=setInterval(()=>$('timer').textContent=fmt(elapsed()),500);lockWake();
- $('btnRec').classList.add('recording');['btnPause','btnMark','btnStop'].forEach(b=>$(b).disabled=false)};
-$('btnPause').onclick=()=>{if(mr.state==='recording'){acc+=(Date.now()-t0)/1000;mr.pause();$('btnPause').textContent='▶️ Tiếp tục'}else{t0=Date.now();mr.resume();$('btnPause').textContent='⏸ Tạm dừng'}};
+ $('btnRec').classList.add('recording');liveFin=[];liveInt='';if(SR){$('live').classList.remove('hidden');liveShow();liveNote('');liveStart();setTimeout(()=>{if(mr&&mr.state==='inactive'){liveStop();liveNote('ℹ️ Chữ trực tiếp xung đột với micro nên đã tắt.')}},1500)}['btnPause','btnMark','btnStop'].forEach(b=>$(b).disabled=false)};
+$('btnPause').onclick=()=>{if(mr.state==='recording'){acc+=(Date.now()-t0)/1000;mr.pause();liveStop();$('btnPause').textContent='▶️ Tiếp tục'}else{t0=Date.now();mr.resume();liveStart();$('btnPause').textContent='⏸ Tạm dừng'}};
 $('btnMark').onclick=()=>{marks.push(Math.floor(elapsed()));$('btnMark').textContent='🚩 Đánh dấu ('+marks.length+')'};
-$('btnStop').onclick=()=>{acc=elapsed();mr.stop();stream.getTracks().forEach(t=>t.stop());clearInterval(tick);if(wake)wake.release().catch(()=>{});wake=null;
+$('btnStop').onclick=()=>{acc=elapsed();liveStop();mr.stop();stream.getTracks().forEach(t=>t.stop());clearInterval(tick);if(wake)wake.release().catch(()=>{});wake=null;
  $('btnRec').classList.remove('recording');['btnPause','btnMark','btnStop'].forEach(b=>$(b).disabled=true);$('btnPause').textContent='⏸ Tạm dừng';$('btnMark').textContent='🚩 Đánh dấu'};
-async function finish(){const type=(mr.mimeType||chunks[0]&&chunks[0].type||'audio/mp4').split(';')[0];await saveNew(new Blob(chunks,{type}),acc,marks.slice());$('timer').textContent='00:00'}
+async function finish(){const type=(mr.mimeType||chunks[0]&&chunks[0].type||'audio/mp4').split(';')[0];await saveNew(new Blob(chunks,{type}),acc,marks.slice(),undefined,liveText());$('timer').textContent='00:00'}
 $('fileIn').onchange=async e=>{const f=e.target.files[0];if(!f)return;let type=f.type||guessType(f.name);await saveNew(new Blob([f],{type}),0,[],f.name.replace(/\.[^.]+$/,''));e.target.value=''};
 function guessType(n){const x=n.split('.').pop().toLowerCase();return{m4a:'audio/mp4',mp4:'audio/mp4',mp3:'audio/mp3',wav:'audio/wav',aac:'audio/aac',ogg:'audio/ogg',webm:'audio/webm',flac:'audio/flac'}[x]||'audio/mp4'}
-async function saveNew(blob,dur,mk,title){const d=new Date();const r={id:String(d.getTime()),title:title||'Ghi âm '+d.toLocaleString('vi-VN'),created:d.getTime(),dur,marks:mk,tpl:$('tpl').value,audio:blob,transcript:'',summary:'',qa:[]};
+async function saveNew(blob,dur,mk,title,live){const d=new Date();const r={id:String(d.getTime()),title:title||'Ghi âm '+d.toLocaleString('vi-VN'),created:d.getTime(),dur,marks:mk,tpl:$('tpl').value,audio:blob,transcript:'',summary:'',qa:[],live:live||''};
  await dbPut(r);render();openDetail(r.id);process(r.id)}
 // ---------- Gemini ----------
 const TPL={meeting:'cuộc họp',kaigo:'buổi họp bàn giao trong viện dưỡng lão (申し送り, kaigo): chú ý tình trạng từng người được chăm sóc, thuốc, ăn uống, bài tiết, ngã, việc cần theo dõi',interview:'buổi phỏng vấn',lecture:'bài giảng'};
@@ -79,11 +91,11 @@ async function render(){const q=$('search').value.toLowerCase();const all=(await
 $('search').oninput=render;
 let url;
 async function openDetail(id){cur=id;const r=await dbGet(id);if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(r.audio);$('dAudio').src=url;fill(r);showTab('summary');$('detail').showModal()}
-function fill(r){$('dTitle').value=r.title;$('dStatus').textContent=statuses[r.id]||'';$('tab-summary').textContent=r.summary||'(chưa có)';$('tab-transcript').textContent=r.transcript||'(chưa có)';
+function fill(r){$('dTitle').value=r.title;$('dStatus').textContent=statuses[r.id]||'';$('tab-summary').textContent=r.summary||'(chưa có)';$('tab-transcript').textContent=r.transcript||(r.live?'(đang chờ AI — chữ trực tiếp:)\n'+r.live:'(chưa có)');$('tab-live').textContent=r.live||'(không có)';
  $('dMarks').innerHTML='';r.marks.forEach(s=>{const b=document.createElement('span');b.className='mark';b.textContent='🚩 '+fmt(s);b.onclick=()=>{$('dAudio').currentTime=Math.max(0,s-5);$('dAudio').play()};$('dMarks').appendChild(b)});
  $('answers').innerHTML='';(r.qa||[]).forEach(x=>addQA(x.q,x.a))}
 function addQA(q,a){const d=document.createElement('div');d.style.margin='10px 0';d.textContent='❓ '+q+'\n💬 '+a;$('answers').prepend(d)}
-function showTab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));['summary','transcript','ask'].forEach(x=>$('tab-'+x).classList.toggle('hidden',x!==t))}
+function showTab(t){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));['summary','transcript','live','ask'].forEach(x=>$('tab-'+x).classList.toggle('hidden',x!==t))}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
 $('dClose').onclick=()=>{$('detail').close();cur=null;$('dAudio').pause()};
 $('dTitle').onchange=async()=>{const r=await dbGet(cur);r.title=$('dTitle').value||r.title;await dbPut(r);render()};
@@ -97,8 +109,8 @@ $('btnAsk').onclick=async()=>{const q=$('q').value.trim();if(!q)return;const r=a
  try{const a=await gen([{text:'Dựa vào bản ghi sau, trả lời câu hỏi bằng tiếng Việt (trừ khi được hỏi bằng ngôn ngữ khác). Nếu bản ghi không có thông tin thì nói rõ.\n\nBẢN GHI:\n'+r.transcript+'\n\nTÓM TẮT:\n'+r.summary+'\n\nCÂU HỎI: '+q}]);
   r.qa=(r.qa||[]).concat({q,a});await dbPut(r);addQA(q,a);$('q').value=''}catch(e){alert('Lỗi: '+e.message)}$('btnAsk').disabled=false};
 // settings
-$('btnSettings').onclick=()=>{$('sKey').value=S.key;$('sLang').value=S.lang;$('sModel').value=S.model;$('settings').showModal()};
-$('sSave').onclick=()=>{localStorage.key_gemini=$('sKey').value.trim();localStorage.lang=$('sLang').value;localStorage.model=$('sModel').value.trim()||'gemini-3.8-flash';$('settings').close()};
+$('btnSettings').onclick=()=>{$('sKey').value=S.key;$('sLang').value=S.lang;$('sModel').value=S.model;$('sSr').value=localStorage.srLang||'ja-JP';$('settings').showModal()};
+$('sSave').onclick=()=>{localStorage.key_gemini=$('sKey').value.trim();localStorage.lang=$('sLang').value;localStorage.srLang=$('sSr').value;localStorage.model=$('sModel').value.trim()||'gemini-3.8-flash';$('settings').close()};
 $('sClose').onclick=()=>$('settings').close();
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
