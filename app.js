@@ -1,7 +1,7 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const API='https://generativelanguage.googleapis.com';
-const S={get key(){return localStorage.key_gemini||''},get lang(){return localStorage.lang||'vi'},get model(){return localStorage.model||'gemini-2.5-flash'}};
+const S={get key(){return localStorage.key_gemini||''},get lang(){return localStorage.lang||'vi'},get model(){const m=localStorage.model;return(!m||m==='gemini-2.5-flash')?'gemini-3.8-flash':m}};
 // ---------- IndexedDB ----------
 let dbp=new Promise((res,rej)=>{const r=indexedDB.open('ghiamai',1);r.onupgradeneeded=()=>r.result.createObjectStore('rec',{keyPath:'id'});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
 async function tx(mode,fn){const db=await dbp;return new Promise((res,rej)=>{const t=db.transaction('rec',mode),s=t.objectStore('rec'),r=fn(s);t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})}
@@ -41,9 +41,14 @@ async function audioPart(blob){const mime=blob.type||'audio/mp4';
  let f=(await up.json()).file;
  while(f.state==='PROCESSING'){await new Promise(r=>setTimeout(r,3000));f=await(await fetch(API+'/v1beta/'+f.name,{headers:{'x-goog-api-key':S.key}})).json()}
  if(f.state==='FAILED')throw new Error('Google không xử lý được file');return{file_data:{mime_type:f.mimeType||mime,file_uri:f.uri}}}
-async function gen(parts){if(!S.key)throw new Error('Chưa có khoá API. Vào ⚙️ Cài đặt.');
+async function pickModel(){const j=await(await fetch(API+'/v1beta/models?pageSize=200',{headers:{'x-goog-api-key':S.key}})).json();
+ const ms=(j.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')).map(m=>m.name.replace('models/','')).filter(n=>/^gemini-[\d.]+-flash$/.test(n));
+ ms.sort((a,b)=>parseFloat(b.slice(7))-parseFloat(a.slice(7)));return ms[0]}
+async function gen(parts,retry){if(!S.key)throw new Error('Chưa có khoá API. Vào ⚙️ Cài đặt.');
  const r=await fetch(API+'/v1beta/models/'+S.model+':generateContent',{method:'POST',headers:{'x-goog-api-key':S.key,'Content-Type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts}]})});
- const j=await r.json();if(!r.ok)throw new Error((j.error&&j.error.message)||r.status);
+ const j=await r.json();
+ if(!r.ok&&!retry&&(r.status===404||/no longer available|not found|not supported/i.test((j.error&&j.error.message)||''))){const m=await pickModel().catch(()=>null);if(m&&m!==S.model){localStorage.model=m;return gen(parts,true)}}
+ if(!r.ok)throw new Error((j.error&&j.error.message)||r.status);
  return(j.candidates&&j.candidates[0].content&&j.candidates[0].content.parts||[]).map(p=>p.text||'').join('')}
 async function process(id){const r=await dbGet(id);setStatus(id,'⏳ Đang chuyển thành văn bản và tóm tắt... (có thể mất vài phút)');
  try{const ap=await audioPart(r.audio);
@@ -93,7 +98,7 @@ $('btnAsk').onclick=async()=>{const q=$('q').value.trim();if(!q)return;const r=a
   r.qa=(r.qa||[]).concat({q,a});await dbPut(r);addQA(q,a);$('q').value=''}catch(e){alert('Lỗi: '+e.message)}$('btnAsk').disabled=false};
 // settings
 $('btnSettings').onclick=()=>{$('sKey').value=S.key;$('sLang').value=S.lang;$('sModel').value=S.model;$('settings').showModal()};
-$('sSave').onclick=()=>{localStorage.key_gemini=$('sKey').value.trim();localStorage.lang=$('sLang').value;localStorage.model=$('sModel').value.trim()||'gemini-2.5-flash';$('settings').close()};
+$('sSave').onclick=()=>{localStorage.key_gemini=$('sKey').value.trim();localStorage.lang=$('sLang').value;localStorage.model=$('sModel').value.trim()||'gemini-3.8-flash';$('settings').close()};
 $('sClose').onclick=()=>$('settings').close();
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
